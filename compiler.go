@@ -22,6 +22,8 @@
 
 package main
 
+import "log"
+
 //"fmt"
 //"log"
 //"strings"
@@ -146,4 +148,97 @@ func isLetter(char string) bool {
 	}
 
 	return false
+}
+/*
+
+ The parser...
+
+For our parser were going to take our array of tokens and turn it into an AST
+
+[{type: 'paren', value: '('},...] => {type: 'Program, body: [...]'}
+
+we will define our type node here. within node are pointers types to what would otherwise be recursive types in GO.
+
+*/
+type node struct{
+	kind string
+	value string
+	name string 
+	callee *node
+	expression *node
+	body []node
+	params []node
+	arguments *[]node
+	context *[]node
+}
+/*type ast is just an allias type for node. we do this because it makes things clearer dude to the the hih number of reference there are to 'node'*/
+type ast node
+
+//this is the counter variable that will be used for counting
+var pc int
+
+// this variable will store our slice of 'token's inside of it
+var pt []token
+
+/*
+now we can defin our parser function, it will take a slice of tokens to create the ast
+*/
+func parser (tokens []token) ast {
+	pc = 0 
+	pt = tokens
+
+	//this is the root node for our AST, our AST will have a Program node as the root
+	ast := ast{
+		kind: "Program",
+		body: []node{},
+	}
+
+	for pc < len(pt){
+		ast.body = append(ast.body, walk())
+	}	
+	return ast
+}
+func walk() node{
+
+	//we begin by grabbing the current token
+	token := pt[pc]
+	
+	//we are going to split each type of token off into a different code path, starting off with 'number' tokns
+	if token.kind == "number"{
+		pc++
+
+		//and we will return a new AST called 'NumberLiteral' and settig its value to the value of our token
+		return node{
+			kind: "NumberLiteral",
+			value: token.value,
+		}
+	}
+	//next were going to look for calledExpessions. we start this off when we encounter an opening parenthesis
+	if token.kind == "paren" && token.value == "("{
+		//we will increment 'current' to skip the parenthsis since we don't care about it in this AST
+		pc++
+		token = pt[pc]
+
+		/*
+			we create a base node with the type CalledExpression, and we're going to set the name as the curren't token's val
+			since the next token after th eopen parenthesis is the name of the function
+		*/
+		n := node{
+			kind: "CalledExpression",
+			name: token.value,
+			params: []node{},
+		}
+		//we increment the 'curr' again to skip the name token
+		pc++
+		token = pt[pc]
+
+		for token.kind != "paren" || (token.kind == "paren" && token.value != ")"){
+			n.params = append(n.params, walk())
+		}
+		pc++
+		return n
+	}
+	//if we don't recognize the token kind we throw an error
+	log.Fatal(token.kind)
+	return node{}
 }
