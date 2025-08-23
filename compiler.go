@@ -243,3 +243,44 @@ func walk() node{
 	log.Fatal(token.kind)
 	return node{}
 }
+
+/*
+	The traverser--> now that we have our AST, we wan't to be able to visit different nodes within it and most importantly we want 
+	to be able to call methods on the visitor node whenever we encounter a node of a given type 
+
+	for this we'll utilize some interesting syntax basically, we'll create a map of functions where the key is the name of our function
+*/
+//so for what i understand visitor is now a map that takes a string as a key and has a functon associated with that key.. this way we can perform different actions on different node types
+type visitor map[string]func(n *node, p node)
+
+func traverser(a ast, v visitor){
+	//we kickstart the traverser by calling traverseNode with our ast 
+	//no parent is passed because well... the root node has no parent
+	
+}
+func traverseArray(a []node, p node, v visitor){
+	for _, child := range a {
+		traverseNode(child, p, v)
+	}
+}
+func traverseNode(n, p node, v visitor){
+	//we start by testing for the existance of a method on the visitor with a matching type
+	for key, value := range v{
+		if key == n.kind{
+			value(&n,p)
+		}
+	}
+	switch n.kind{
+		case "Program":
+			traverseArray(n.body,n,v)
+			break
+		case "CallExpression":
+			traverseArray(n.params, n,v)
+			break
+		case "NumberLiteral":
+			break
+		default:
+			log.Fatal(n.kind)
+	
+	}
+}
