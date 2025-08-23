@@ -224,7 +224,7 @@ func walk() node{
 			since the next token after th eopen parenthesis is the name of the function
 		*/
 		n := node{
-			kind: "CalledExpression",
+			kind: "CallExpression",
 			name: token.value,
 			params: []node{},
 		}
@@ -234,6 +234,7 @@ func walk() node{
 
 		for token.kind != "paren" || (token.kind == "paren" && token.value != ")"){
 			n.params = append(n.params, walk())
+			token = pt[pc]
 		}
 		pc++
 		return n

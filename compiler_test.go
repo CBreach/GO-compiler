@@ -3,6 +3,8 @@ package main
 import (
 	"slices"
 	"testing"
+	"fmt"
+	"reflect"
 )
 
 func TestIsDigit(t *testing.T) {
@@ -49,4 +51,57 @@ func TestTokenizer(t *testing.T) {
 		t.Fatal("tokenizer mismatch")
 	}
 
+}
+func generateTestAst() ast{
+	var testAst = ast{
+		kind: "Program",
+		body: []node{
+			node{
+				kind: "CallExpression",
+				name: "add",
+				params: []node{
+					node{
+						kind: "NumberLiteral",
+						value: "2",
+					},
+					node{
+						kind: "CallExpression",
+						name: "substract",
+						params: []node{
+							node{
+								kind: "NumberLiteral",
+								value: "4",
+							},
+							node{
+								kind: "NumberLiteral",
+								value: "2",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	return testAst
+}
+func TestParser(t *testing.T){
+	expected := []token{
+		{kind: "paren", value: "("},
+		{kind: "name", value: "add"},
+		{kind: "number", value: "2"},
+		{kind: "paren", value: "("},
+		{kind: "name", value: "substract"},
+		{kind: "number", value: "4"},
+		{kind: "number", value: "2"},
+		{kind: "paren", value: ")"},
+		{kind: "paren", value: ")"},
+	}
+
+	ast := parser(expected)
+	testAst  := generateTestAst()
+	if !reflect.DeepEqual(ast, testAst){
+		t.Error("\nExpected:",testAst, "\nGot:", ast)
+	}
+	fmt.Println(ast)
+		
 }
