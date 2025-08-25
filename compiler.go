@@ -256,6 +256,7 @@ type visitor map[string]func(n *node, p node)
 func traverser(a ast, v visitor){
 	//we kickstart the traverser by calling traverseNode with our ast 
 	//no parent is passed because well... the root node has no parent
+	traverseNode(node(a), node{},v)
 	
 }
 func traverseArray(a []node, p node, v visitor){
@@ -283,4 +284,72 @@ func traverseNode(n, p node, v visitor){
 			log.Fatal(n.kind)
 	
 	}
+}
+
+/*
+	The transformer...
+
+	Next up, the transformer.. our transformer is going to take the AST that we have built and pass it to our traverser function
+	and pass it to our traverser function with a visitor and will create a new ast.
+*/
+
+func transformer(a ast) ast{
+	//we'll create a new AST which like our previous ASt will have a program node...
+	nast := ast {
+		kind: "Program",
+		body: []node{},
+	}
+	// Next I'm going to cheat a little and create a bit of a hack. We're going to
+	// use a property named `context` on our parent nodes that we're going to push
+	// nodes to their parent's `context`. Normally you would have a better
+	// abstraction than this, but for our purposes this keeps things simple.
+	//
+	// Just take note that the context is a reference *from* the old ast *to* the
+	// new ast.
+	a.context = &nast.body
+
+	//we'll start by calling the traverser function with our ast and a visitor
+	traverser(a, map[string]func(n *node, p node){
+		//the first visitor method accepts 'NumberLiterals'
+		"NumberLiterals": func (n *node, p node){
+			*p.context = append(*p.context, node{
+				kind: "NumberLiteral",
+				value: n.value,
+			})
+		},
+		//next up is CallExpression...
+		"CallExpression": func(n *node, p node) {
+			//we start creating a new node "CallExpression" with a nested Identifier
+			e := node{
+				kind : "CallExpression",
+				callee: &node{
+					kind: "Identifier",
+					name: n.name,
+				},
+				arguments: new([]node),
+			}
+			//Next we're going to define a new context on the original
+			//CallExpresson node that will reference the 'expression's' arguments
+			//so that we can push arguments
+			n.context = e.arguments
+
+			//then we are going to check if the parent node is a 'CallExpression'
+			//if not well then...
+			if p.kind != "CallExpression"{
+				//we are going to wrap our "CallExpressoin" node with an "Expression statement"
+
+				es := node{
+					kind: "ExpressionStatement",
+					expression: &e,
+				}
+
+				//Last, we push our (possibly wrapped) 'CallExpression' to the parent's context
+				*p.context = append(*p.context, es)
+			}else{
+				*p.context = append(*p.context, e)
+			}
+		},
+
+	})
+	return nast
 }
