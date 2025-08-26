@@ -22,7 +22,11 @@
 
 package main
 
-import "log"
+import (
+	"fmt"
+	"log"
+	"strings"
+)
 
 //"fmt"
 //"log"
@@ -311,7 +315,7 @@ func transformer(a ast) ast{
 	//we'll start by calling the traverser function with our ast and a visitor
 	traverser(a, map[string]func(n *node, p node){
 		//the first visitor method accepts 'NumberLiterals'
-		"NumberLiterals": func (n *node, p node){
+		"NumberLiteral": func (n *node, p node){
 			*p.context = append(*p.context, node{
 				kind: "NumberLiteral",
 				value: n.value,
@@ -353,3 +357,80 @@ func transformer(a ast) ast{
 	})
 	return nast
 }
+
+//code Generator!!!
+
+/*
+	now we can finally move into the last phase of this compiler: the code generator
+	our code generator is going to recursively call itself to print each node in the tree into one giant string
+*/
+func codeGenerator(n node) string{
+	//we'll break things up by the type of the node we encounter
+	switch n.kind{
+		case "Program":
+			var r []string
+			for _, no := range n.body{
+				r = append(r, codeGenerator(no))
+			}
+			return strings.Join(r,"\n")
+
+
+		//in the case of expression statemetnts we'll call the code generator on the nested 
+		//expression and we'll add a semicolon
+		case "ExpressionStatement":
+			return codeGenerator(*n.expression) + ";"
+
+		/*
+			For 'CallExpressions' we will print the callee and an open parenthesis
+			we will map through each node in the 'argumnets' array and run them through 
+			the code gnerator, joining them with a comma and then we'll add a closing parenthesis!
+		*/
+		case "CallExpression":
+			var ra []string
+			c := codeGenerator(*n.callee)
+			
+			for _,no := range *n.arguments{
+			ra = append(ra, codeGenerator(no))
+			}
+			r := strings.Join(ra,", ")
+			return c + "(" + r + ")"
+
+		case "Identifier":
+			return n.name
+		case "NumberLiteral":
+			return n.value
+		default:
+			log.Fatal("err")
+			return ""
+		
+
+	}
+}
+
+	/*
+		================================================================
+			THE COMPILER!!
+		================================================================
+	*/
+
+	/**
+		Now that we have all the pieces we can finally create the compiler function where we put the pipeline to work
+		1: input -> tokenizer -> tokens
+		2: tokens -> parser -> ast
+		3: ast -> transformer -> newAst
+		4: newAst -> codeGenerator -> output
+	*/
+func compiler(input string) string {
+	tokens := tokenizer(input)
+	ast := parser(tokens)
+	nast := transformer(ast)
+	out := codeGenerator(node(nast))
+	return out
+}
+
+func main(){
+	program := "(add 10 (substract 10 6))"
+	out := compiler(program)
+	fmt.Println(out)
+}
+
